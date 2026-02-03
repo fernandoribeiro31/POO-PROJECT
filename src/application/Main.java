@@ -1,6 +1,6 @@
 package application;
 
-import model.*; // Importa todas as entidades (Quarto, Hospede, etc)
+import model.*;
 import service.HotelService;
 import utils.GerenciadorArquivos;
 
@@ -12,15 +12,18 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        
-        // Instancia o SERVIÇO (o cérebro do sistema).
-        // A Main não guarda listas, quem guarda é o hotelService.
         HotelService hotel = new HotelService();
 
-        // --- PERSISTÊNCIA (Carregar Dados) ---
-        // Assim que o programa abre, tentamos ler o arquivo de texto.
-        // Se houver dados salvos, recadastramos na memória do sistema.
-        System.out.println("Carregando dados...");
+        System.out.println("Carregando sistema...");
+
+        // 1. CARREGAR QUARTOS (Isso é novo!)
+        // Tem que ser ANTES dos hóspedes para o sistema já ter quartos na memória
+        List<Quarto> quartosSalvos = GerenciadorArquivos.carregarQuartos();
+        for (Quarto q : quartosSalvos) {
+            hotel.cadastrarQuarto(q);
+        }
+
+        // 2. CARREGAR HÓSPEDES
         List<Hospede> hospedesSalvos = GerenciadorArquivos.carregarHospedes();
         for (Hospede h : hospedesSalvos) {
             hotel.cadastrarHospede(h);
@@ -28,22 +31,19 @@ public class Main {
 
         int opcao = 0;
 
-        // --- LOOP PRINCIPAL (Menu Interativo) ---
-        // Mantém o programa rodando até o usuário digitar 6.
+        // Loop do Menu
         while (opcao != 6) {
             exibirMenu();
             try {
-                // DICA TÉCNICA: Usamos Integer.parseInt(nextLine) em vez de nextInt()
-                // para evitar o famoso "bug do pular linha" do Scanner do Java.
-                opcao = Integer.parseInt(scanner.nextLine());
+                // Lê como string e converte para evitar bugs do Scanner
+                String input = scanner.nextLine();
+                if (input.isEmpty()) continue;
+                opcao = Integer.parseInt(input);
             } catch (NumberFormatException e) {
-                // TRATAMENTO DE ERRO DE INTERFACE:
-                // Se o usuário digitar "abc" em vez de número, o programa avisa e não quebra.
                 System.out.println("Por favor, digite um número válido.");
-                continue; // Volta para o início do loop
+                continue;
             }
 
-            // Roteamento: Decide qual método chamar baseada na opção
             switch (opcao) {
                 case 1:
                     cadastrarQuarto(scanner, hotel);
@@ -61,10 +61,13 @@ public class Main {
                     listarRelatorios(hotel);
                     break;
                 case 6:
-                    // --- SALVAR E SAIR ---
                     System.out.println("Salvando dados e saindo...");
-                    // Antes de fechar, salva a lista atualizada no arquivo .txt
+                    
+                    // --- AQUI ESTAVA O SEGREDO ---
+                    // Salvamos Hóspedes E Quartos antes de fechar
                     GerenciadorArquivos.salvarHospedes(hotel.getHospedes());
+                    GerenciadorArquivos.salvarQuartos(hotel.getQuartos());
+                    
                     System.out.println("Sistema encerrado.");
                     break;
                 default:
@@ -74,8 +77,7 @@ public class Main {
         scanner.close();
     }
 
-    // --- MÉTODOS AUXILIARES (Clean Code) ---
-    // Tiramos a lógica de dentro do switch para o código ficar mais limpo e organizado.
+    // --- MÉTODOS AUXILIARES ---
 
     private static void exibirMenu() {
         System.out.println("\n=== SISTEMA DE HOTEL ===");
@@ -90,27 +92,27 @@ public class Main {
 
     private static void cadastrarQuarto(Scanner scanner, HotelService hotel) {
         System.out.println("\n--- Cadastro de Quarto ---");
-        System.out.println("Tipo: 1-Simples | 2-Luxo");
-        
-        // Conversão de String para Inteiro
-        int tipo = Integer.parseInt(scanner.nextLine());
-        
-        System.out.print("Número do Quarto: ");
-        int numero = Integer.parseInt(scanner.nextLine());
-        
-        System.out.print("Preço Base da Diária: ");
-        double preco = Double.parseDouble(scanner.nextLine());
+        try {
+            System.out.println("Tipo: 1-Simples | 2-Luxo");
+            int tipo = Integer.parseInt(scanner.nextLine());
+            
+            System.out.print("Número do Quarto: ");
+            int numero = Integer.parseInt(scanner.nextLine());
+            
+            System.out.print("Preço Base da Diária: ");
+            double preco = Double.parseDouble(scanner.nextLine());
 
-        // A Main decide QUAL objeto criar baseada na escolha do usuário
-        Quarto novoQuarto;
-        if (tipo == 2) {
-            novoQuarto = new QuartoLuxo(numero, preco); // Polimorfismo: Instancia filho
-        } else {
-            novoQuarto = new QuartoSimples(numero, preco);
+            Quarto novoQuarto;
+            if (tipo == 2) {
+                novoQuarto = new QuartoLuxo(numero, preco);
+            } else {
+                novoQuarto = new QuartoSimples(numero, preco);
+            }
+            
+            hotel.cadastrarQuarto(novoQuarto);
+        } catch (NumberFormatException e) {
+            System.out.println("Erro: Digite apenas números.");
         }
-        
-        // Delega o cadastro para o Service
-        hotel.cadastrarQuarto(novoQuarto);
     }
 
     private static void cadastrarHospede(Scanner scanner, HotelService hotel) {
@@ -136,13 +138,11 @@ public class Main {
             int numQuarto = Integer.parseInt(scanner.nextLine());
             
             System.out.print("Data Entrada (AAAA-MM-DD): ");
-            // Parse de Data: Transforma texto "2024-01-01" em objeto LocalDate
             LocalDate entrada = LocalDate.parse(scanner.nextLine());
             
             System.out.print("Data Saída (AAAA-MM-DD): ");
             LocalDate saida = LocalDate.parse(scanner.nextLine());
 
-            // A Main só coleta os dados, quem faz a mágica é o hotel.realizarReserva
             hotel.realizarReserva(cpf, numQuarto, entrada, saida);
             
         } catch (DateTimeParseException e) {
@@ -163,7 +163,6 @@ public class Main {
     }
 
     private static void listarRelatorios(HotelService hotel) {
-        // Apenas chama os métodos de listagem do Service
         hotel.listarQuartosDisponiveis();
         hotel.listarHospedes();
         hotel.listarReservasAtivas();
