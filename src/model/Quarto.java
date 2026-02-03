@@ -45,4 +45,13 @@ public abstract class Quarto {
         // Formata o preço para ter sempre 2 casas decimais (ex: 100.00)
         return "Quarto " + numero + " [R$ " + String.format("%.2f", calcularDiaria()) + "]";
     }
+
+    // Método novo para salvar no arquivo
+    public String toCSV() {
+        // Verifica qual é o tipo da classe usando 'instanceof'
+        String tipo = (this instanceof QuartoLuxo) ? "LUXO" : "SIMPLES";
+        
+        // Retorna: TIPO;NUMERO;PRECO;OCUPADO
+        return tipo + ";" + numero + ";" + precoBase + ";" + isOcupado;
+    }
 }
