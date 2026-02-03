@@ -41,7 +41,7 @@ public class HotelService {
             System.out.println("Erro: Já existe um quarto com o número " + quarto.getNumero());
         } else {
             quartos.add(quarto); // Adiciona na lista se passou na validação.
-            System.out.println("Quarto " + quarto.getNumero() + " cadastrado com sucesso!");
+            //System.out.println("Quarto " + quarto.getNumero() + " cadastrado com sucesso!");
         }
     }
 
@@ -49,7 +49,7 @@ public class HotelService {
         // Simplesmente adiciona o hóspede na lista.
         // (Aqui poderíamos adicionar validação de CPF repetido se quiséssemos).
         hospedes.add(hospede);
-        System.out.println("Hóspede " + hospede.getNome() + " cadastrado!");
+        //System.out.println("Hóspede " + hospede.getNome() + " cadastrado!");
     }
 
     // --- RESERVAS (O Método mais Complexo) ---
@@ -106,14 +106,17 @@ public class HotelService {
     public void realizarCheckOut(int numeroQuarto) {
         Optional<Quarto> quartoOpt = buscarQuartoPorNumero(numeroQuarto);
         
-        // Verifica se achou o quarto E se ele está realmente ocupado
         if (quartoOpt.isPresent() && quartoOpt.get().isOcupado()) {
             Quarto q = quartoOpt.get();
             
-            // MUDANÇA DE ESTADO: Libera o quarto para novas reservas
+            // 1. Libera o quarto (físico)
             q.setOcupado(false); 
             
-            System.out.println("Check-out realizado para o quarto " + numeroQuarto);
+            // 2. CORREÇÃO: Remove a reserva da lista de ativas
+            // Tradução: "Remova da lista SE o número do quarto da reserva for igual ao quarto do checkout"
+            reservas.removeIf(r -> r.getQuarto().getNumero() == numeroQuarto);
+            
+            System.out.println("Check-out realizado! Quarto " + numeroQuarto + " liberado e reserva removida.");
         } else {
             System.out.println("Erro: Quarto não está ocupado ou não existe.");
         }
@@ -166,6 +169,9 @@ public class HotelService {
         // Varre a lista procurando um Número igual ao informado
         return quartos.stream().filter(q -> q.getNumero() == numero).findFirst();
     }
-    
+        
     public List<Hospede> getHospedes() { return hospedes; }
+    
+    // Esse aqui é OBRIGATÓRIO para salvar os quartos
+    public List<Quarto> getQuartos() { return quartos; }
 }
